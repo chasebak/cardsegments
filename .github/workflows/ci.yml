@@ -1,0 +1,62 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+env:
+  TZ: UTC
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ci.txt
+          pip install -e .
+      - name: Lint
+        run: ruff check src tests
+      - name: Test
+        run: python -m pytest -q
+      - name: Ladder report blocks match the committed results
+        run: python -m cardsegments.ladder_report --check
+      - name: Synthetic findings match the committed bundle
+        run: python -m cardsegments.synth_findings --check
+      - name: Buy List Explorer page data and blocks match the committed results
+        run: python -m cardsegments.viz build --check
+
+  # Secret scan over the WHOLE git history (fetch-depth: 0), not just the
+  # tip: a key committed once and deleted later is still public in history.
+  # Runs the gitleaks CLI from its release tarball (the gitleaks GitHub
+  # Action needs a license key for org accounts). Pinned to an exact version;
+  # the tarball is checked against that release's published checksums file,
+  # which catches a corrupt or swapped download only if the release itself
+  # is intact. --redact keeps any found secret out of the public CI log.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks, full history)
+        env:
+          GITLEAKS_VERSION: "8.18.4"
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$tarball" "$base/$tarball"
+          curl -sSfL -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${tarball}\$" checksums.txt | sha256sum --check --strict -
+          tar -xzf "$tarball" gitleaks
+          ./gitleaks detect --source "$GITHUB_WORKSPACE" --redact --no-banner --exit-code 1

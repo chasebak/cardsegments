@@ -1,0 +1,188 @@
+/* Shared look for the five portfolio pages. Copied byte-for-byte into each
+   repo as docs/tokens.css; a test in each repo compares its copy's sha256 to
+   the value recorded in docs/data/meta.json so the pages never drift apart.
+   Why tokens: charts read these at render time, so light/dark mode needs no
+   second palette in JavaScript. */
+
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f2f0eb;
+  --text: #1d1d1b;
+  --text-muted: #5f5e5a;
+  --border: #dedbd3;
+  --accent: #2f5bd3;      /* the software / the policy being shown */
+  --baseline: #8a8780;    /* the fair baseline it is compared against */
+  --good: #1f7a4d;
+  --bad: #b3261e;
+  --warn: #9a6700;
+  --band: rgba(47, 91, 211, 0.14);
+  --series-1: #2f5bd3;
+  --series-2: #c2410c;
+  --series-3: #0f766e;
+  --series-4: #7c3aed;
+  --series-5: #8a8780;
+  --radius: 10px;
+  --gutter: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141413;
+    --surface: #1d1d1b;
+    --surface-2: #262624;
+    --text: #ecebe6;
+    --text-muted: #a8a69f;
+    --border: #3a3936;
+    --accent: #7ea2ff;
+    --baseline: #8f8d86;
+    --good: #5cc08d;
+    --bad: #f2867d;
+    --warn: #e0b153;
+    --band: rgba(126, 162, 255, 0.18);
+    --series-1: #7ea2ff;
+    --series-2: #fb923c;
+    --series-3: #2dd4bf;
+    --series-4: #b794f6;
+    --series-5: #8f8d86;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #141413;
+  --surface: #1d1d1b;
+  --surface-2: #262624;
+  --text: #ecebe6;
+  --text-muted: #a8a69f;
+  --border: #3a3936;
+  --accent: #7ea2ff;
+  --baseline: #8f8d86;
+  --good: #5cc08d;
+  --bad: #f2867d;
+  --warn: #e0b153;
+  --band: rgba(126, 162, 255, 0.18);
+  --series-1: #7ea2ff;
+  --series-2: #fb923c;
+  --series-3: #2dd4bf;
+  --series-4: #b794f6;
+  --series-5: #8f8d86;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 48px;
+  overflow-x: hidden;
+}
+
+h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 8px; }
+h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+p { margin: 0 0 12px; }
+a { color: var(--accent); }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+
+.lede { color: var(--text-muted); margin-bottom: 20px; }
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  min-width: 0;
+}
+.tile .label { font-size: 0.8rem; color: var(--text-muted); }
+.tile .value { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .note { font-size: 0.8rem; color: var(--text-muted); }
+.tile.headline { border-color: var(--accent); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 16px 0;
+  min-width: 0;
+}
+
+.why {
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+  padding: 8px 12px;
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+}
+.why b { display: block; }
+
+.provenance {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin: 0 0 8px;
+}
+
+.control { margin: 12px 0; }
+.control label { display: block; font-weight: 600; margin-bottom: 4px; }
+.control input[type="range"] { width: 100%; accent-color: var(--accent); }
+.control .ticks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.control input[type="text"] {
+  width: 100%;
+  max-width: 360px;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chart-box { position: relative; width: 100%; height: 300px; }
+.chart-box canvas { max-width: 100%; }
+
+.table-wrap { width: 100%; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--text-muted); font-weight: 600; }
+
+.good { color: var(--good); }
+.bad { color: var(--bad); }
+.warn { color: var(--warn); }
+.muted { color: var(--text-muted); }
+
+footer {
+  margin-top: 40px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

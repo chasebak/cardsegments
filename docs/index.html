@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buy List Explorer</title>
+<meta name="description" content="Drag the buy threshold and watch two buy lists fill side by side on synthetic cards: a full logistic model and a trailing-sales logistic, each with the share of flagged cards that sat unsold and the sellers it passed over.">
+<link rel="stylesheet" href="tokens.css">
+<style>
+  .sticky {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    margin: 0 calc(-1 * var(--gutter)); padding: 8px var(--gutter) 4px;
+  }
+  .sticky .control { margin: 4px 0 0; }
+  .control-row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; }
+  .control-row .group-label { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+  .segmented { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+  .segmented button {
+    font: inherit; font-size: 0.85rem; padding: 4px 10px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface); color: var(--text); font-variant-numeric: tabular-nums;
+  }
+  .segmented button[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-2); color: var(--accent); font-weight: 600; }
+  .control .ticks.stops { display: block; position: relative; height: 28px; margin: 2px 9px 0; }
+  .stops .stop { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+  .stops .stop .mark { display: block; width: 1px; height: 5px; margin: 0 auto 2px; background: var(--border); }
+  .stops .stop.labelled .mark { height: 8px; background: var(--text-muted); }
+  .stops .stop.first { transform: none; text-align: left; }
+  .stops .stop.first .mark { margin-left: 0; }
+  .stops .stop.last { transform: translateX(-100%); text-align: right; }
+  .stops .stop.last .mark { margin-right: 0; }
+  .stops .stop.tstar .mark { background: var(--warn); height: 10px; width: 2px; }
+  .stops .stop.tstar { color: var(--warn); font-weight: 600; }
+  .stops .stop.on .mark { background: var(--accent); height: 12px; width: 3px; }
+  .t-now { font-variant-numeric: tabular-nums; color: var(--accent); }
+  .lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .list-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; min-width: 0; background: var(--surface); }
+  .list-card.model { border-color: var(--accent); }
+  .list-card h3 { font-size: 1rem; margin: 0 0 4px; }
+  .list-card .big { font-size: 1.4rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .list-card .sub { font-size: 0.85rem; color: var(--text-muted); margin: 0 0 8px; }
+  .matrix th, .matrix td { white-space: normal; }
+  .matrix td.num, .matrix th.num { text-align: right; }
+  .matrix td.parked { color: var(--bad); font-weight: 600; }
+  .matrix td.missed { color: var(--warn); font-weight: 600; }
+  .matrix td.sold { color: var(--good); font-weight: 600; }
+  .chart-fallback { color: var(--text-muted); font-size: 0.9rem; margin: 8px 0; }
+  .note-line { font-size: 0.85rem; color: var(--text-muted); margin: 8px 0 0; }
+  .why p { margin: 0; }
+  .whys .why + .why { margin-top: 8px; }
+  details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+  td.num, th.num { text-align: right; }
+  tr.chosen td { background: var(--surface-2); font-weight: 600; }
+  .tile .value.small { font-size: 1.1rem; }
+  .banner { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <p class="banner" id="banner"></p>
+  <h1>Buy List Explorer</h1>
+  <p class="lede">A buy list is every card a model scores at or above a threshold. Cards on the list that sat unsold park cash; cards left off that went on to sell are missed sellers. Drag the threshold and watch two lists fill side by side on synthetic cards: a full logistic model and a logistic on trailing sales only (velocity), which any buyer can see for free.</p>
+  <p id="load-error" class="bad" hidden>The page data did not load. Serve the docs folder over HTTP (for example <code>python -m http.server -d docs</code>) instead of opening the file directly.</p>
+  <p id="label-error" class="bad" hidden>The page data carry no SYNTHETIC label, so the page refuses to show them.</p>
+
+  <div class="sticky" id="controls">
+    <div class="control-row">
+      <span class="group-label" id="signal-label">Planted segment effect</span>
+      <div class="segmented" id="signal-buttons" role="group" aria-labelledby="signal-label"></div>
+    </div>
+    <div class="control-row">
+      <span class="group-label" id="cost-label">Cost setting</span>
+      <div class="segmented" id="cost-buttons" role="group" aria-labelledby="cost-label"></div>
+    </div>
+    <div class="control">
+      <label for="threshold">Buy threshold t: <span class="t-now" id="t-now"></span></label>
+      <input type="range" id="threshold" min="0" max="0" step="1" value="0" aria-describedby="slider-prov">
+      <div class="ticks stops" id="ticks" aria-hidden="true"></div>
+    </div>
+    <span class="provenance" id="slider-prov" data-prov="slider"></span>
+  </div>
+
+  <section class="card" id="tiles-card">
+    <h2>At the cost-set threshold t* = <span data-tstar></span></h2>
+    <span class="provenance" data-prov="tiles"></span>
+    <div class="tiles">
+      <div class="tile headline">
+        <div class="label">Parked rate at t*: full logistic vs velocity</div>
+        <div class="value" id="tile-parked"></div>
+        <div class="note" id="tile-parked-note"></div>
+      </div>
+      <div class="tile">
+        <div class="label">Missed sellers at t*</div>
+        <div class="value small" id="tile-missed"></div>
+        <div class="note" id="tile-missed-note"></div>
+      </div>
+      <div class="tile">
+        <div class="label">Threshold regret (share of cost at t*)</div>
+        <div class="value small" id="tile-regret"></div>
+        <div class="note" id="tile-regret-note"></div>
+      </div>
+      <div class="tile">
+        <div class="label">Ranking lift, ΔAUC (threshold-free)</div>
+        <div class="value small" id="tile-auc"></div>
+        <div class="note" id="tile-auc-note"></div>
+      </div>
+    </div>
+    <p class="note-line" id="context-note"></p>
+    <div class="whys">
+      <div class="why" data-why="parked_rate"></div>
+      <div class="why" data-why="classification_ladder"></div>
+    </div>
+  </section>
+
+  <section class="card" id="lists-card">
+    <h2>Two buy lists at t = <span class="t-now" data-t-now></span></h2>
+    <span class="provenance" data-prov="lists"></span>
+    <div class="lists" id="lists"></div>
+    <div class="whys">
+      <div class="why" data-why="buy_list_matrices"></div>
+      <div class="why" data-why="missed_sellers"></div>
+    </div>
+  </section>
+
+  <section class="card" id="curves-card">
+    <h2>Parked capital vs missed sellers across thresholds</h2>
+    <span class="provenance" data-prov="curves"></span>
+    <div class="chart-box" id="curves-box">
+      <canvas id="curves-chart" role="img" aria-label="Parked rate and missed-seller share against the buy threshold, for the full logistic and the velocity logistic, with the slider threshold and t* marked"></canvas>
+    </div>
+    <p class="chart-fallback" data-fallback hidden>chart unavailable, table shown</p>
+    <p class="note-line">Solid lines: parked rate (share of the list that sat). Dashed lines: missed sellers (share of the cards that sold that the list passed over). Blue line: the slider; amber line: t*.</p>
+    <div class="why" data-why="tradeoff_curves"></div>
+  </section>
+
+  <section class="card" id="cost-card">
+    <h2>Decision cost per card across thresholds</h2>
+    <span class="provenance" data-prov="cost"></span>
+    <div class="chart-box" id="cost-box">
+      <canvas id="cost-chart" role="img" aria-label="Decision cost per card against the buy threshold for both lists under the chosen cost setting, with t* and each list's cheapest grid threshold marked"></canvas>
+    </div>
+    <p class="chart-fallback" data-fallback hidden>chart unavailable, table shown</p>
+    <p class="note-line" id="cost-note"></p>
+    <div class="why" data-why="threshold_regret"></div>
+  </section>
+
+  <section class="card" id="table-card">
+    <h2>The numbers behind the charts</h2>
+    <span class="provenance" data-prov="table"></span>
+    <details data-fallback-details>
+      <summary>All 49 thresholds for this signal and cost setting</summary>
+      <div class="table-wrap"><table id="grid-table"></table></div>
+    </details>
+    <div class="why" data-why="grid_table"></div>
+  </section>
+
+  <footer>
+    <p id="footer-text"></p>
+    <p>Data: <a href="data/explorer.json">explorer.json</a> · <a href="data/meta.json">meta.json</a>, written by <code>python -m cardsegments.viz build</code> from the committed synthetic results.</p>
+  </footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha512-CQBWl4fJHWbryGE+Pc7UAxWMUMNMWzWxF4SQo9CgkJIN1kx6djDQZjh3Y8SZ1d+6I+1zze6Z7kHXO7q3UyZAWw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="app.js"></script>
+</body>
+</html>

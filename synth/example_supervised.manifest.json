@@ -1,0 +1,31 @@
+{
+  "name": "example_supervised",
+  "n_rows": 1200,
+  "anchor_date": null,
+  "outcome_window": null,
+  "feature_cols": [
+    "f_log_raw_price",
+    "f_log_multiplier",
+    "f_gem_rate_pooled",
+    "f_log_pop_total",
+    "f_log1p_sales_365",
+    "f_tcg_vol_365"
+  ],
+  "baseline_cols": [
+    "b_log1p_sold_90d",
+    "b_log1p_sold_365d"
+  ],
+  "metadata_cols": [
+    "card_id",
+    "group_id",
+    "era_label",
+    "release_year",
+    "pop_fresh"
+  ],
+  "outcome_cols": [
+    "y_liquid",
+    "n_sold_outcome",
+    "fwd_log_price_change"
+  ],
+  "notes": "synthetic supervised data with planted cluster value-add; seed=0"
+}
