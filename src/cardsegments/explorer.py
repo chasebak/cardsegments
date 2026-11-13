@@ -50,6 +50,7 @@ INDEX_PATH = "docs/index.html"
 APP_PATH = "docs/app.js"
 GENERATED_BY = "python -m cardsegments.viz build"
 TITLE = "Buy List Explorer"
+PAGE_URL = "https://chasebak.github.io/cardsegments/"
 # Plan, Shared standards (d): cardsegments' page data stay under 150 KB.
 DATA_BUDGET_BYTES = 150_000
 # sha256 of the portfolio page kit's tokens.css, base64 like an SRI hash (a
@@ -352,14 +353,14 @@ def text_bytes(text):
 # ---------------------------------------------------------------- README / DECISIONS / METHOD
 
 def readme_try_it_line(n_points, first, last):
-    """The README's 'Try it' line. It names the folder and how to serve it;
-    it claims no live URL, because GitHub Pages is switched on by hand."""
-    return ("**Try it (60 s):** the %s page in `docs/` (`python -m http.server -d docs`, "
-            "then open the address it prints) lets you drag the buy threshold across %d "
+    """The README's 'Try it' line. It names the hosted page and the local
+    way to serve the same files."""
+    return ("**Try it (60 s):** the %s page at %s (or locally: "
+            "`python -m http.server -d docs`) lets you drag the buy threshold across %d "
             "precomputed points from %.2f to %.2f and watch the full logistic's and the "
             "velocity logistic's buy lists fill side by side, at planted signal 0 and 0.9 "
             "and three cost settings; every number on it comes from `%s`."
-            % (TITLE, n_points, first, last, GENERATED_BY))
+            % (TITLE, PAGE_URL, n_points, first, last, GENERATED_BY))
 
 
 def readme_table(grid):

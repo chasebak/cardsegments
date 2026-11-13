@@ -308,12 +308,13 @@ def test_every_provenance_slot_has_a_pill(page):
                                             "show as ticks")
 
 
-def test_readme_try_it_line_claims_no_live_url(page):
+def test_readme_try_it_line_names_the_hosted_page(page):
     thresholds = page["thresholds"]
     line = explorer.readme_try_it_line(len(thresholds), thresholds[0], thresholds[-1])
     readme = read_text("README.md")
     assert line in readme
-    assert "http://" not in line and "https://" not in line and "github.io" not in line
+    assert explorer.PAGE_URL in line
+    assert "http.server" in line
 
 
 def test_app_refuses_unlabelled_data_and_reads_only_the_bundle():
